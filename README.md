@@ -19,6 +19,18 @@ agec is basically just a small wrapper around [age](https://github.com/FiloSotti
 
 Download binary from [releases](https://github.com/aca/agec/releases)
 
+Linux
+```
+curl -s -L "https://github.com/aca/agec/releases/download/v1.0.0/agec_1.0.0_linux_amd64.tar.gz" | tar xvz agec
+sudo mv agec /usr/local/bin
+```
+
+Darwin
+```
+curl -s -L "https://github.com/aca/agec/releases/download/v1.0.0/agec_1.0.0_darwin_all.tar.gz" | tar xvz agec
+sudo mv agec /usr/local/bin
+```
+
 or build from source, agec requires go >= 1.18
 ```
 go install github.com/aca/agec@main
