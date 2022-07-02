@@ -51,14 +51,14 @@ git clone https://github.com/aca/agec.git
 cd agec/examples
 ```
 
-Check configuration already created
-```
-cat .agec.yaml
-```
-
 Add yourself as a user and member of existing group `admin`, with public keys from github
 ```
 curl -s "https://github.com/aca.keys" | agec useradd aca -g admin -R -
+```
+
+Agec have concept of 'user', 'group'. You can check it in root configuration.
+```
+cat .agec.yaml
 ```
 
 Create encrypted file that can be decrypted by only "aca" or members of group `admin`
@@ -73,7 +73,7 @@ agec decrypt secret.txt.age
 
 edit files
 
-change owner of file to member james
+chown updates secret to be encrypted with public keys of user:james instead of user:aca+group:admin
 ```
 agec chown -u james -g '' secret.txt
 ```
