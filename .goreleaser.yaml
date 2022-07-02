@@ -1,0 +1,21 @@
+before:
+  hooks:
+    - go test -v ./...
+    - go mod tidy
+builds:
+  - env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    goarm:
+      - "7"
+universal_binaries:
+- replace: false
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ incpatch .Version }}-next"
