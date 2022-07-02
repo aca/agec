@@ -1,0 +1,10 @@
+version: v1
+users:
+    - name: james
+      recipients:
+        - age18j08cfw85a6fhycpeq6cm5zrm2pnft8qk3vtfyvx6jm5dx0w437qne84l2
+groups:
+    - name: admin
+      members:
+        - james
+secrets: []
