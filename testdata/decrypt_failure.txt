@@ -1,0 +1,42 @@
+# decrypt_failure
+agec encrypt secret.txt -g devops
+stdout 'encrypted "secret.txt.age"\n'
+stdout 'rm "secret.txt"\n'
+! agec decrypt secret.txt.age -i aca.key
+stderr 'failed to decrypt "secret.txt.age": no identity matched any of the recipients\n'
+
+-- secret.txt --
+this is secret file
+
+-- .agec.yaml --
+version: v1
+users:
+    - name: aca
+      recipients:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIDrfyRz3qqKAiBKziZl3aoLkZaaDxF6H/MTRtloKYLVW john
+    - name: john
+      recipients:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHcOxFPXarxSbKwGUj6bTlxVec6LoPJQKPnVd/p7Zljq tmp
+secrets: []
+groups:
+    - name: devops
+      members:
+        - john
+
+-- aca.key --
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACA638kc96qigIgSs4mZd2qC5GWmg8Reh/zE0bZaCmC1VgAAAKBAPOg/QDzo
+PwAAAAtzc2gtZWQyNTUxOQAAACA638kc96qigIgSs4mZd2qC5GWmg8Reh/zE0bZaCmC1Vg
+AAAEBY5JvxjGEuyc7Uy0hMBvg4c65h3iC1NzbphMznt9ZJLDrfyRz3qqKAiBKziZl3aoLk
+ZaaDxF6H/MTRtloKYLVWAAAAF2t5dW5ncm9rLmNodW5nQHJvay10b3NzAQIDBAUG
+-----END OPENSSH PRIVATE KEY-----
+
+-- john.key --
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACB3DsRT12q8UmysBlI+m05cVXnOi6DyUCj51Xf6e2ZY6gAAAKDbkxHc25MR
+3AAAAAtzc2gtZWQyNTUxOQAAACB3DsRT12q8UmysBlI+m05cVXnOi6DyUCj51Xf6e2ZY6g
+AAAECmy9OuLW/r4tt3+zVz+Cjsooih1CEUcc7ek+Q5yd950XcOxFPXarxSbKwGUj6bTlxV
+ec6LoPJQKPnVd/p7ZljqAAAAF2t5dW5ncm9rLmNodW5nQHJvay10b3NzAQIDBAUG
+-----END OPENSSH PRIVATE KEY-----

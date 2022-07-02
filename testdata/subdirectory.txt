@@ -1,0 +1,35 @@
+# subdirectory
+cd sub
+agec encrypt secret.txt -u aca
+stdout 'encrypted "secret.txt.age"\n'
+stdout 'rm "secret.txt"\n'
+agec decrypt secret.txt.age -i ../key
+stdout 'decrypted "secret.txt"\n'
+exec cat secret.txt
+stdout 'this is secret file'
+agec ls
+stdout 'secret.txt\n'
+
+-- sub/secret.txt --
+this is secret file
+
+-- .agec.yaml --
+version: v1
+users:
+    - name: aca
+      recipients:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHcOxFPXarxSbKwGUj6bTlxVec6LoPJQKPnVd/p7Zljq tmp
+secrets: []
+groups:
+    - name: devops
+      members:
+        - aca
+
+-- key --
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACB3DsRT12q8UmysBlI+m05cVXnOi6DyUCj51Xf6e2ZY6gAAAKDbkxHc25MR
+3AAAAAtzc2gtZWQyNTUxOQAAACB3DsRT12q8UmysBlI+m05cVXnOi6DyUCj51Xf6e2ZY6g
+AAAECmy9OuLW/r4tt3+zVz+Cjsooih1CEUcc7ek+Q5yd950XcOxFPXarxSbKwGUj6bTlxV
+ec6LoPJQKPnVd/p7ZljqAAAAF2t5dW5ncm9rLmNodW5nQHJvay10b3NzAQIDBAUG
+-----END OPENSSH PRIVATE KEY-----

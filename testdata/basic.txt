@@ -1,0 +1,71 @@
+# basic
+agec encrypt secret.txt -u aca
+stdout 'encrypted "secret.txt.age"\n'
+stdout 'rm "secret.txt"\n'
+agec decrypt secret.txt.age -i key
+stdout 'decrypted "secret.txt"\n'
+exec cat secret.txt
+stdout 'this is secret file'
+agec ls
+stdout 'secret.txt\n'
+
+agec chown -u john secret.txt
+agec encrypt secret.txt --force
+! agec decrypt secret.txt.age -i key
+stderr 'failed to decrypt "secret.txt.age": no identity matched any of the recipients\n'
+
+agec decrypt secret.txt.age -i john.key
+stdout 'decrypted "secret.txt"\n'
+
+agec groups john
+stdout 'john\n'
+
+agec usermod john -g devops
+agec groups john
+stdout 'devops\n'
+
+agec usermod john -g devops,john -a
+agec groups john
+stdout 'devops\njohn'
+agec chown -g devops secret.txt
+agec encrypt secret.txt
+agec decrypt secret.txt.age -i key
+
+agec ls
+stdout 'secret.txt\n'
+agec rm secret.txt
+agec ls
+stdout ''
+
+-- secret.txt --
+this is secret file
+
+-- .agec.yaml --
+version: v1
+users:
+    - name: aca
+      recipients:
+        - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIHcOxFPXarxSbKwGUj6bTlxVec6LoPJQKPnVd/p7Zljq tmp
+    - name: john
+      recipients:
+        - age1jk9tea2v9aknanqkvvy2rpfmst7mqu80wezacevd28acpfezagjqrkwnsd
+secrets: []
+groups:
+    - name: devops
+      members:
+        - aca
+    - name: john
+      members:
+        - john
+
+-- key --
+-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACB3DsRT12q8UmysBlI+m05cVXnOi6DyUCj51Xf6e2ZY6gAAAKDbkxHc25MR
+3AAAAAtzc2gtZWQyNTUxOQAAACB3DsRT12q8UmysBlI+m05cVXnOi6DyUCj51Xf6e2ZY6g
+AAAECmy9OuLW/r4tt3+zVz+Cjsooih1CEUcc7ek+Q5yd950XcOxFPXarxSbKwGUj6bTlxV
+ec6LoPJQKPnVd/p7ZljqAAAAF2t5dW5ncm9rLmNodW5nQHJvay10b3NzAQIDBAUG
+-----END OPENSSH PRIVATE KEY-----
+
+-- john.key --
+AGE-SECRET-KEY-1AD2S0SCCN762GM6M38VEG2N9D0TEF62EGDPC350VHUWHEXJ52WKQ2R9ST6
