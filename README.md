@@ -21,13 +21,13 @@ Download binary from [releases](https://github.com/aca/agec/releases)
 
 Linux
 ```
-curl -s -L "https://github.com/aca/agec/releases/download/v1.0.0/agec_1.0.0_linux_amd64.tar.gz" | tar xvz agec
+curl -s -L "https://github.com/aca/agec/releases/download/v0.1.0/agec_0.1.0_linux_amd64.tar.gz" | tar xvz agec
 sudo mv agec /usr/local/bin
 ```
 
 Darwin
 ```
-curl -s -L "https://github.com/aca/agec/releases/download/v1.0.0/agec_1.0.0_darwin_all.tar.gz" | tar xvz agec
+curl -s -L "https://github.com/aca/agec/releases/download/v0.1.0/agec_0.1.0_darwin_all.tar.gz" | tar xvz agec
 sudo mv agec /usr/local/bin
 ```
 
