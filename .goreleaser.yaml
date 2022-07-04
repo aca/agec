@@ -14,8 +14,10 @@ builds:
     goarm:
       - "7"
 universal_binaries:
-- replace: false
+  - replace: false
 checksum:
-  name_template: 'checksums.txt'
+  name_template: "checksums.txt"
 snapshot:
   name_template: "{{ incpatch .Version }}-next"
+archives:
+  - format: binary
