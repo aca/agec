@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 )
 
@@ -35,9 +34,18 @@ func runChown(opts *chownOpt) error {
 	}
 
 	for _, file := range opts.Files {
-		relpath, err := filepath.Rel(rootDir, filepath.Join(wd, file))
-		if err != nil {
-			return err
+		var relpath string
+		var err error
+		if filepath.IsAbs(file) {
+			relpath, err = filepath.Rel(rootDir, file)
+			if err != nil {
+				return err
+			}
+		} else {
+			relpath, err = filepath.Rel(rootDir, filepath.Join(wd, file))
+			if err != nil {
+				return err
+			}
 		}
 
 		secret, err := ctx.Config.GetSecret(relpath)
@@ -123,18 +131,13 @@ func sanitizeChownArgs(paths []string) ([]string, error) {
 	files := []string{}
 
 	for _, p := range paths {
-		fileInfo, err := os.Lstat(p)
+		_, err := os.Lstat(p)
 		if err != nil {
 			return nil, err
-		}
-
-		if !fileInfo.Mode().IsRegular() {
-			return nil, fmt.Errorf("%q is not a regular file", p)
 		}
 
 		files = append(files, p)
 	}
 
-	files = lo.Uniq(files)
 	return files, nil
 }

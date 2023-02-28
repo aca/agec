@@ -5,103 +5,101 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/fs"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"filippo.io/age"
 	"filippo.io/age/agessh"
-	"github.com/samber/lo"
 	"github.com/spf13/cobra"
 )
 
 type decryptOpt struct {
 	IdentityFile string
 	Identities   []age.Identity
-	Files        []string
+	FileArg      string
 	Force        bool
 	ctx          *Context
 }
 
-func sanitizeDecryptArgs(paths []string) ([]string, error) {
-	files := []string{}
-	for _, p := range paths {
-		fileInfo, err := os.Lstat(p)
-		if err != nil {
-			return nil, err
-		}
-
-		if fileInfo.Mode().IsRegular() {
-			if filepath.Ext(p) != ".age" {
-				return nil, fmt.Errorf("%q is not valid encrypted file", p)
-			} else {
-				files = append(files, p)
-			}
-		}
-
-		if fileInfo.IsDir() {
-			err := filepath.WalkDir(p, func(path string, d fs.DirEntry, err error) error {
-				if d.Name() == ".git" {
-					return filepath.SkipDir
-				}
-
-				if err != nil {
-					return err
-				}
-
-				if !d.Type().IsRegular() {
-					return nil
-				}
-
-				files = append(files, path)
-				return nil
-			})
-			if err != nil {
-				return nil, err
-			}
-		}
+func sanitizeDecryptArg(arg string, workingDir string) (string, error) {
+	if filepath.Ext(arg) != ".age" {
+		return "", fmt.Errorf("%q is not valid encrypted file", arg)
 	}
 
-	files = lo.Uniq(files)
-	return files, nil
+	fileInfo, err := os.Lstat(arg)
+	if err != nil {
+		return "", err
+	}
+
+	if !fileInfo.Mode().IsRegular() {
+		return "", fmt.Errorf("%q is not a regular file", arg)
+	}
+
+	if !filepath.IsAbs(arg) {
+		arg = filepath.Join(workingDir, arg)
+	}
+
+	relpath, err := filepath.Rel(workingDir, arg)
+	if err != nil {
+		return "", fmt.Errorf("fail to get relpath of %q: %v", arg, err)
+	}
+	return relpath, nil
 }
 
 func runDecrypt(opts *decryptOpt) error {
-	for _, file := range opts.Files {
-		decryptedFile := strings.TrimSuffix(file, ".age")
-		_, err := os.Stat(decryptedFile)
-		if !opts.Force && err == nil {
-			log.Printf("skipping %q, as it already exists", decryptedFile)
-			continue
-		}
+	file := opts.FileArg
 
-		f, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		defer f.Close()
-
-		ager, err := age.Decrypt(f, opts.Identities...)
-		if err != nil {
-			return fmt.Errorf("failed to decrypt %q: %v", file, err)
-		}
-
-		dstFile, err := os.Create(decryptedFile)
-		if err != nil {
-			return err
-		}
-		defer dstFile.Close()
-
-		_, err = io.Copy(dstFile, ager)
-		if err != nil {
-			return fmt.Errorf("failed to copy %q: %v", file, err)
-		}
-
-		fmt.Printf("decrypted %q\n", decryptedFile)
+	decryptedFileLinkPath := filepath.Join(opts.ctx.WorkingDir, strings.TrimSuffix(file, ".age"))
+	if !opts.Force && fileExists(decryptedFileLinkPath) {
+		return fmt.Errorf("skipping %q. Use --force to re-decrypt file", decryptedFileLinkPath)
 	}
+
+	relPath, err := filepath.Rel(opts.ctx.RootDir, decryptedFileLinkPath)
+	if err != nil {
+		return err
+	}
+	decryptedFilePath := filepath.Join(opts.ctx.SecretStorePath, relPath)
+
+	f, err := os.Open(file)
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	ager, err := age.Decrypt(f, opts.Identities...)
+	if err != nil {
+		return fmt.Errorf("failed to decrypt %q: %v", file, err)
+	}
+
+	err = os.MkdirAll(filepath.Dir(decryptedFilePath), 0o777)
+	if err != nil && os.IsNotExist(err) {
+		return err
+	}
+
+	dstFile, err := os.Create(decryptedFilePath)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+
+	_, err = io.Copy(dstFile, ager)
+	if err != nil {
+		return fmt.Errorf("failed to copy %q: %v", file, err)
+	}
+
+	relp, err := filepath.Rel(opts.ctx.WorkingDir, decryptedFilePath)
+	if err != nil {
+		return err
+	}
+
+	err = os.Symlink(relp, decryptedFileLinkPath)
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	fmt.Printf("decrypted %q\n", decryptedFileLinkPath)
 	return nil
 }
 
@@ -128,6 +126,7 @@ func newDecryptCmd(ctx *Context) *cobra.Command {
   fd --extension age | xargs agec decrypt`,
 		SilenceUsage:  true,
 		SilenceErrors: true,
+		Args:          cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if ctx == nil {
 				return ErrConfigurationNotFound
@@ -171,7 +170,7 @@ func newDecryptCmd(ctx *Context) *cobra.Command {
 			}
 
 			var err error
-			opts.Files, err = sanitizeDecryptArgs(args)
+			opts.FileArg, err = sanitizeDecryptArg(args[0], ctx.WorkingDir)
 			if err != nil {
 				return err
 			}

@@ -21,14 +21,14 @@ Download binary from [releases](https://github.com/aca/agec/releases)
 
 Linux
 ```
-curl -L -o agec "https://github.com/aca/agec/releases/download/v0.1.0/agec_0.1.0_linux_amd64"
+curl -L -o agec "https://github.com/aca/agec/releases/download/v0.1.0/agec_0.1.2_linux_amd64"
 chmod +x ./agec
 sudo mv ./agec /usr/local/bin
 ```
 
 Darwin
 ```
-curl -L -o agec "https://github.com/aca/agec/releases/download/v0.1.0/agec_0.1.0_darwin_all"
+curl -L -o agec "https://github.com/aca/agec/releases/download/v0.1.0/agec_0.1.2_darwin_all"
 chmod +x ./agec
 sudo mv ./agec /usr/local/bin
 ```
@@ -46,16 +46,16 @@ agec completion [SHELL] --help
 ## Example workflow
 Change "aca" with your github id. This example will use public keys registered in github for encryption.
 
-Clone repository, `examples/` will be the root directory to test agec.
-Or just start from any directory with `agec init`.
+Setup test directory
 ```
-git clone https://github.com/aca/agec.git
-cd agec/examples
+mkdir testdir && cd testdir && git init && agec init && echo "secret txt" > secret.txt
 ```
 
-Add yourself as a user and member of existing group `admin`, with public keys from github
+Add group "admin" and register "aca" and yourself as a member of group `admin`, with public keys from github
 ```
-curl -s "https://github.com/aca.keys" | agec useradd aca -g admin -R -
+agec groupadd admin
+curl "https://github.com/aca.keys" | agec useradd aca -g admin -R -
+curl "https://github.com/{{ your github id }}.keys" | agec useradd {{ your github id }} -g admin -R -
 ```
 
 Agec have concept of 'user', 'group'. You can check it in root configuration.
@@ -63,9 +63,9 @@ Agec have concept of 'user', 'group'. You can check it in root configuration.
 cat .agec.yaml
 ```
 
-Create encrypted file that can be decrypted by only "aca" or members of group `admin`
+Create encrypted file that can be decrypted by members of group `admin`
 ```
-agec encrypt secret.txt -u aca -g admin
+agec encrypt secret.txt -g admin
 ```
 
 decrypt file, it will try to decrypt file with keys in ~/.ssh by default.
@@ -75,20 +75,15 @@ agec decrypt secret.txt.age
 
 edit files
 
-chown updates secret to be encrypted with public keys of user:james instead of user:aca+group:admin
+chown updates owner of the secret, this will change owner of secret.txt from "group:admin" to "user:aca"
 ```
-agec chown -u james -g '' secret.txt
+agec chown -u aca -g '' secret.txt
 ```
 
-Re-encrypt it, but you won't be able to decrypt the secret
+Re-encrypt it, but you won't be able to decrypt the secret as you are not the owner of secret anymore.
 ```
 agec encrypt secret.txt
 agec decrypt secret.txt.age # fail
-```
-
-Try to decrypt it with james's private key
-```
-agec decrypt secret.txt.age -i james.agekey # success
 ```
 
 List of available commands, and detailed usage.

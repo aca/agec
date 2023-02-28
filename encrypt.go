@@ -7,105 +7,139 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"filippo.io/age"
-	"github.com/samber/lo"
+	"github.com/google/go-cmp/cmp"
 	"github.com/spf13/cobra"
 )
 
+type SecretFile struct {
+	Input         string
+	RelFromRoot   string
+	RelFromWD     string
+	ABS           string
+	RealPath      string
+	DecryptedPath string
+}
+
 type encryptOpt struct {
-	Users  []string
-	Groups []string
-	Files  []string
-	Force  bool
+	Users   []string
+	Groups  []string
+	FileArg SecretFile
+	Force   bool
 
 	ctx *Context
 }
 
-func runEncrypt(opts *encryptOpt) error {
+func runEncrypt(opts *encryptOpt) (rerr error) {
 	ctx := opts.ctx
-	wd := ctx.WorkingDir
 
-	for _, file := range opts.Files {
-		encryptedFile := file + ".age"
+	f := opts.FileArg
+	encryptedFile := f.Input + ".age"
 
-		if fileExists(encryptedFile) && !opts.Force {
-			log.Printf("skipping %q. Use --force to re-encrypt file", file)
-			continue
-		}
-
-		var recs []age.Recipient
-
-		relpath, err := filepath.Rel(ctx.RootDir, filepath.Join(wd, file))
-		if err != nil {
-			return err
-		}
-
-		secret, err := ctx.Config.GetSecret(relpath)
-		if err != nil {
-			// new secret
-			secret = Secret{
-				Users:  opts.Users,
-				Groups: opts.Groups,
-				Path:   relpath,
-			}
-
-			recs, err = ctx.Config.GetRecipients(opts.Users, opts.Groups)
-			if err != nil {
-				return err
-			}
-		} else {
-			// existing secret
-			recs, err = ctx.Config.GetRecipients(secret.Users, secret.Groups)
-			if err != nil {
-				return err
-			}
-		}
-
-		out := &bytes.Buffer{}
-		agew, err := age.Encrypt(out, recs...)
-		if err != nil {
-			return err
-		}
-		defer agew.Close()
-
-		plainFile, err := os.Open(file)
-		if err != nil {
-			return err
-		}
-		defer plainFile.Close()
-
-		_, err = io.Copy(agew, plainFile)
-		if err != nil {
-			return err
-		}
-
-		if agew.Close() != nil {
-			return err
-		}
-
-		err = os.WriteFile(encryptedFile, out.Bytes(), 0o644)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("encrypted %q\n", encryptedFile)
-
-		if plainFile.Close() != nil {
-			return err
-		}
-
-		err = os.Remove(file)
-		if err != nil {
-			return err
-		}
-
-		fmt.Printf("rm %q\n", file)
-
-		ctx.Config.SaveSecret(secret)
-
+	if fileExists(encryptedFile) && !opts.Force {
+		log.Printf("skipping %q. Use --force to re-encrypt file", f)
+		return nil
 	}
 
+	var recs []age.Recipient
+
+	secret, err := ctx.Config.GetSecret(f.RelFromRoot)
+	if err != nil {
+		// new secret
+		secret = Secret{
+			Users:  opts.Users,
+			Groups: opts.Groups,
+			Path:   f.RelFromRoot,
+		}
+
+		recs, err = ctx.Config.GetRecipients(opts.Users, opts.Groups)
+		if err != nil {
+			return err
+		}
+	} else {
+		// existing secret
+		// NOTES: Add message to run chown first to chown for secret
+		// Fail if user,group has changed
+
+		if len(opts.Users) != 0 || len(opts.Groups) != 0 {
+			if !cmp.Equal(opts.Users, secret.Users) {
+				return fmt.Errorf("owner of secret has changed, `agec chown -u %v %v` first", strings.Join(opts.Users, ","), f.Input)
+			}
+			if !cmp.Equal(opts.Groups, secret.Groups) {
+				return fmt.Errorf("owner of secret has changed, `agec chown -g %v %v` first", strings.Join(opts.Groups, ","), f.Input)
+			}
+		}
+
+		recs, err = ctx.Config.GetRecipients(secret.Users, secret.Groups)
+		if err != nil {
+			return err
+		}
+	}
+
+	out := &bytes.Buffer{}
+	agew, err := age.Encrypt(out, recs...)
+	if err != nil {
+		return err
+	}
+	defer agew.Close()
+
+	plainFile, err := os.Open(f.ABS)
+	if err != nil {
+		return err
+	}
+
+	_, err = io.Copy(agew, plainFile)
+	if err != nil {
+		return err
+	}
+
+	if agew.Close() != nil {
+		return err
+	}
+
+	if plainFile.Close() != nil {
+		return err
+	}
+
+	err = WriteFile(encryptedFile, out.Bytes())
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("encrypted %q\n", encryptedFile)
+
+	err = os.MkdirAll(filepath.Dir(f.DecryptedPath), 0o777)
+	if err != nil {
+		return err
+	}
+
+	if err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	err = os.Rename(f.RealPath, f.DecryptedPath)
+	if err != nil {
+		return err
+	}
+
+	relativelinkpath, err := filepath.Rel(filepath.Dir(f.ABS), f.DecryptedPath)
+	if err != nil {
+		return err
+	}
+
+	err = os.Remove(f.Input)
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	err = os.Symlink(relativelinkpath, f.Input)
+	if err != nil {
+		return err
+	}
+
+	ctx.Config.SaveSecret(secret)
 	return ctx.WriteConfigFile()
 }
 
@@ -132,7 +166,7 @@ func newEncryptCmd(ctx *Context) *cobra.Command {
 
 		SilenceUsage:  true,
 		SilenceErrors: true,
-		Args:          cobra.MinimumNArgs(1),
+		Args:          cobra.ExactArgs(1),
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			if ctx == nil {
 				return ErrConfigurationNotFound
@@ -147,7 +181,7 @@ func newEncryptCmd(ctx *Context) *cobra.Command {
 			}
 
 			var err error
-			opts.Files, err = sanitizeEncryptArgs(args)
+			opts.FileArg, err = sanitizeEncryptArg(ctx, args[0], ctx.WorkingDir)
 			if err != nil {
 				return err
 			}
@@ -169,22 +203,44 @@ func newEncryptCmd(ctx *Context) *cobra.Command {
 	return cmd
 }
 
-func sanitizeEncryptArgs(paths []string) ([]string, error) {
-	files := []string{}
-
-	for _, p := range paths {
-		fileInfo, err := os.Lstat(p)
-		if err != nil {
-			return nil, err
-		}
-
-		if !fileInfo.Mode().IsRegular() {
-			return nil, fmt.Errorf("%q is not a regular file", p)
-		}
-
-		files = append(files, p)
+func sanitizeEncryptArg(ctx *Context, arg string, workingDir string) (SecretFile, error) {
+	tf := SecretFile{
+		Input: arg,
 	}
 
-	files = lo.Uniq(files)
-	return files, nil
+	fileInfo, err := os.Lstat(tf.Input)
+	if err != nil {
+		return tf, err
+	}
+
+	if fileInfo.Mode().IsDir() {
+		return tf, fmt.Errorf("%q is not a regular file", arg)
+	}
+
+	if fileInfo.Mode()&os.ModeSymlink != 0 {
+		tf.RealPath, err = os.Readlink(tf.Input)
+		if err != nil {
+			return tf, err
+		}
+	} else {
+		tf.RealPath = tf.Input
+	}
+
+	tf.ABS, err = filepath.Abs(tf.Input)
+	if err != nil {
+		return tf, err
+	}
+
+	tf.RelFromWD, err = filepath.Rel(ctx.WorkingDir, tf.ABS)
+	if err != nil {
+		return tf, err
+	}
+
+	tf.RelFromRoot, err = filepath.Rel(ctx.RootDir, tf.ABS)
+	if err != nil {
+		return tf, err
+	}
+
+	tf.DecryptedPath = filepath.Join(ctx.SecretStorePath, tf.RelFromRoot)
+	return tf, nil
 }

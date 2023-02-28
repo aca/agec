@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"strings"
 
@@ -15,7 +14,6 @@ import (
 )
 
 func cmdMain() error {
-	log.SetFlags(0)
 	ctx, err := initContext()
 	if err != nil {
 		if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, ErrConfigurationNotFound) {
@@ -29,9 +27,6 @@ func cmdMain() error {
 	}
 
 	err = rootCmd.Execute()
-	if err != nil {
-		log.Printf("agec: %v", err)
-	}
 	return err
 }
 
@@ -63,15 +58,14 @@ func newRootCmd(ctx *Context, out io.Writer, args []string) (*cobra.Command, err
 		newDecryptCmd(ctx),
 
 		newUserAddCmd(ctx),
-		newUserDelCmd(ctx),
 		newUserModCmd(ctx),
+		newUserDelCmd(ctx),
 
-		newGroupDelCmd(ctx),
 		newGroupAddCmd(ctx),
 		newGroupModCmd(ctx),
+		newGroupDelCmd(ctx),
 
 		newChownCmd(ctx),
-		newValidateCmd(ctx),
 
 		newGroupsCmd(ctx),
 	)

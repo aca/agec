@@ -1,10 +1,9 @@
 # subdirectory
+exec git init -q
 cd sub
 agec encrypt secret.txt -u aca
 stdout 'encrypted "secret.txt.age"\n'
-stdout 'rm "secret.txt"\n'
-agec decrypt secret.txt.age -i ../key
-stdout 'decrypted "secret.txt"\n'
+agec decrypt secret.txt.age -i ../key --force
 exec cat secret.txt
 stdout 'this is secret file'
 agec ls

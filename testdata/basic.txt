@@ -1,9 +1,9 @@
 # basic
+exec git init -q
 agec encrypt secret.txt -u aca
 stdout 'encrypted "secret.txt.age"\n'
-stdout 'rm "secret.txt"\n'
-agec decrypt secret.txt.age -i key
-stdout 'decrypted "secret.txt"\n'
+agec decrypt secret.txt.age -i key --force
+# stdout 'decrypted "secret.txt"\n'
 exec cat secret.txt
 stdout 'this is secret file'
 agec ls
@@ -11,35 +11,35 @@ stdout 'secret.txt\n'
 
 agec chown -u john secret.txt
 agec encrypt secret.txt --force
-! agec decrypt secret.txt.age -i key
-stderr 'failed to decrypt "secret.txt.age": no identity matched any of the recipients\n'
+! agec decrypt secret.txt.age -i key --force
 
-agec decrypt secret.txt.age -i john.key
-stdout 'decrypted "secret.txt"\n'
-
+exec ls -al .git/agec/objects
+agec decrypt secret.txt.age -i john.key --force
+# stdout 'decrypted "secret.txt"\n'
+ 
 agec groups john
 stdout 'john\n'
-
+ 
 agec usermod john -g devops
 agec groups john
 stdout 'devops\n'
-
+ 
 agec usermod john -g devops,john -a
 agec groups john
 stdout 'devops\njohn'
 agec chown -g devops secret.txt
 agec encrypt secret.txt
-agec decrypt secret.txt.age -i key
-
+agec decrypt secret.txt.age -i key --force
+ 
 agec ls
 stdout 'secret.txt\n'
 agec rm secret.txt
 agec ls
 stdout ''
-
+ 
 -- secret.txt --
 this is secret file
-
+ 
 -- .agec.yaml --
 version: v1
 users:

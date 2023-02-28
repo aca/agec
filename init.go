@@ -78,7 +78,7 @@ func newInitCmd(ctx *Context) *cobra.Command {
 		Use:           "init",
 		Short:         "Initalizes agec under the current directory",
 		SilenceUsage:  true,
-		SilenceErrors: true,
+		SilenceErrors: false,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runInit(opts)
 		},

@@ -10,13 +10,14 @@ import (
 )
 
 type Context struct {
-	Debug         bool
-	IdentityFile  string
-	DefaultUsers  []string
-	DefaultGroups []string
-	RootDir       string
-	RootConfig    string
-	WorkingDir    string
+	Debug           bool
+	IdentityFile    string
+	DefaultUsers    []string
+	DefaultGroups   []string
+	RootDir         string
+	RootConfig      string
+	WorkingDir      string
+	SecretStorePath string
 
 	Config *Config
 }
@@ -24,7 +25,10 @@ type Context struct {
 func initContext() (*Context, error) {
 	var err error
 
-	ctx := &Context{}
+	ctx := &Context{
+		DefaultUsers:  []string{},
+		DefaultGroups: []string{},
+	}
 
 	ctx.WorkingDir, err = os.Getwd()
 	if err != nil {
@@ -41,13 +45,10 @@ func initContext() (*Context, error) {
 		return nil, err
 	}
 
-	cfg := &Config{}
-	err = yaml.Unmarshal(b, cfg)
+	err = yaml.Unmarshal(b, &ctx.Config)
 	if err != nil {
 		return nil, err
 	}
-
-	ctx.Config = cfg
 
 	if os.Getenv("AGEC_USERS") != "" {
 		ctx.DefaultUsers = strings.Split(os.Getenv("AGEC_USERS"), ",")
@@ -57,6 +58,7 @@ func initContext() (*Context, error) {
 	}
 
 	ctx.RootDir = filepath.Dir(rootConfig)
+	ctx.SecretStorePath = filepath.Join(ctx.RootDir, "/.git/agec/objects")
 	ctx.RootConfig = rootConfig
 	return ctx, nil
 }
@@ -67,7 +69,7 @@ func (ctx *Context) WriteConfigFile() error {
 		return err
 	}
 
-	return os.WriteFile(ctx.RootConfig, b, 0o771)
+	return os.WriteFile(ctx.RootConfig, b, 0o600)
 }
 
 var ErrConfigurationNotFound = errors.New("failed to find root config, reached max depth")

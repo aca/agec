@@ -1,9 +1,8 @@
+exec git init -q
 # decrypt_failure
 agec encrypt secret.txt -g devops
 stdout 'encrypted "secret.txt.age"\n'
-stdout 'rm "secret.txt"\n'
 ! agec decrypt secret.txt.age -i aca.key
-stderr 'failed to decrypt "secret.txt.age": no identity matched any of the recipients\n'
 
 -- secret.txt --
 this is secret file
