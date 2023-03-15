@@ -8,6 +8,11 @@ exec cat secret.txt
 stdout 'this is secret file'
 agec ls
 stdout 'secret.txt\n'
+rm secret.txt
+cd ..
+agec decrypt sub/secret.txt.age -i ./key --force
+exec cat sub/secret.txt
+stdout 'this is secret file'
 
 -- sub/secret.txt --
 this is secret file

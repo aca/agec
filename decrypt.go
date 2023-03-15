@@ -89,7 +89,9 @@ func runDecrypt(opts *decryptOpt) error {
 		return fmt.Errorf("failed to copy %q: %v", file, err)
 	}
 
-	relp, err := filepath.Rel(opts.ctx.WorkingDir, decryptedFilePath)
+	
+	// relp, err := filepath.Rel(opts.ctx.WorkingDir, decryptedFilePath)
+	relp, err := filepath.Rel(filepath.Dir(filepath.Join(opts.ctx.WorkingDir, file)), decryptedFilePath)
 	if err != nil {
 		return err
 	}
