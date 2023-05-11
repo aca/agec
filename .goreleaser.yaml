@@ -30,6 +30,3 @@ brews:
     tap:
       owner: aca
       name: homebrew-tap
-    install: |
-      bin.install "agec"
-      generate_completions_from_executable(bin/"agec", "completion")
