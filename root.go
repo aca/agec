@@ -33,8 +33,9 @@ func cmdMain() error {
 func newRootCmd(ctx *Context, out io.Writer, args []string) (*cobra.Command, error) {
 	versionFlag := false
 	cmd := &cobra.Command{
-		Use:          "agec",
-		SilenceUsage: true,
+		Use:           "agec",
+		SilenceUsage:  true,
+		SilenceErrors: true,
 		Run: func(cmd *cobra.Command, args []string) {
 			if versionFlag {
 				fmt.Println(version)
